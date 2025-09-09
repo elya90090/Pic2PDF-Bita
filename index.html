@@ -11,9 +11,9 @@
     header h1 { margin:0; font-size:1.8em; text-align:center; flex:1; }
     header span { font-size:1em; opacity:0.9; }
     .container { max-width:600px; margin:20px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px #ccc; }
-    .container label { display:block; margin:10px 0 6px; }
-    input[type="file"], input[type="text"] { width:100%; padding:5px; box-sizing:border-box; }
-    input[type="text"] { margin-bottom:15px; }   /* ✅ فاصله پایین برای نام فایل */
+    .container label { margin:0; }
+    input[type="file"], input[type="text"] { padding:5px; box-sizing:border-box; }
+    input[type="text"] { width:100%; margin-bottom:15px; }
     ul { list-style:none; padding:0; margin:10px 0; }
     li { margin:5px 0; padding:5px; background:#f0f0f0; display:flex; justify-content:space-between; align-items:center; border-radius:5px; }
     button { margin-left:5px; cursor:pointer; }
@@ -21,6 +21,15 @@
     .merge-order .option { display:block; margin:4px 0; }
     .download-btn { width:100%; padding:12px; background:#27ae60; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:1.1em; font-weight:bold; }
     .download-btn:hover { background:#1e8449; }
+
+    /* یک خطی */
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 6px;
+    }
+    .file-row label { white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -33,13 +42,17 @@
 
 <div class="container">
   <!-- 1) عکس‌ها -->
-  <label for="fileInput">انتخاب عکس‌ها (حداکثر ۳۰):</label>
-  <input type="file" id="fileInput" multiple accept="image/*">
+  <div class="file-row">
+    <label for="fileInput">انتخاب عکس‌ها (حداکثر ۳۰):</label>
+    <input type="file" id="fileInput" multiple accept="image/*">
+  </div>
   <ul id="fileList"></ul>
 
   <!-- 2) PDFها -->
-  <label for="pdfInput">انتخاب فایل‌های PDF (حداکثر ۲۰):</label>
-  <input type="file" id="pdfInput" accept="application/pdf" multiple>
+  <div class="file-row">
+    <label for="pdfInput">انتخاب فایل‌های PDF (حداکثر ۲۰):</label>
+    <input type="file" id="pdfInput" accept="application/pdf" multiple>
+  </div>
 
   <!-- 3) ترتیب ادغام -->
   <div class="merge-order">
@@ -162,4 +175,3 @@ generateBtn.addEventListener('click', async () => {
 
 </body>
 </html>
-
