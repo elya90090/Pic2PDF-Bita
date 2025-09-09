@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pic2PDF Bita v1.6</title>
+  <style>
+    body { font-family: sans-serif; background:#eaf2f8; margin:0; padding:0; direction:rtl; }
+    header { display:flex; align-items:center; justify-content:space-between; background:#3498db; color:#fff; padding:10px 20px; }
+    header img { height:100px; max-width:200px; border-radius:10px; object-fit:contain; }
+    header h1 { margin:0; font-size:1.8em; text-align:center; flex:1; }
+    header span { font-size:1em; opacity:0.9; }
+    .container { max-width:600px; margin:20px auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px #ccc; }
+    .container label { display:block; margin:10px 0 6px; }
+    input[type="file"], input[type="text"] { width:100%; padding:5px; box-sizing:border-box; }
+    input[type="text"] { margin-bottom:15px; }   /* ✅ فاصله پایین برای نام فایل */
+    ul { list-style:none; padding:0; margin:10px 0; }
+    li { margin:5px 0; padding:5px; background:#f0f0f0; display:flex; justify-content:space-between; align-items:center; border-radius:5px; }
+    button { margin-left:5px; cursor:pointer; }
+    .merge-order { margin:10px 0 16px; }
+    .merge-order .option { display:block; margin:4px 0; }
+    .download-btn { width:100%; padding:12px; background:#27ae60; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:1.1em; font-weight:bold; }
+    .download-btn:hover { background:#1e8449; }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" alt="Logo" id="logo">
+  <h1>Pic2PDF Bita</h1>
+  <span>v1.6</span>
+</header>
+
+<div class="container">
+  <!-- 1) عکس‌ها -->
+  <label for="fileInput">انتخاب عکس‌ها (حداکثر ۳۰):</label>
+  <input type="file" id="fileInput" multiple accept="image/*">
+  <ul id="fileList"></ul>
+
+  <!-- 2) PDFها -->
+  <label for="pdfInput">انتخاب فایل‌های PDF (حداکثر ۲۰):</label>
+  <input type="file" id="pdfInput" accept="application/pdf" multiple>
+
+  <!-- 3) ترتیب ادغام -->
+  <div class="merge-order">
+    <label>ترتیب ادغام:</label>
+    <label class="option"><input type="radio" name="order" value="images-first" checked> اول عکس‌ها، بعد PDFها</label>
+    <label class="option"><input type="radio" name="order" value="pdfs-first"> اول PDFها، بعد عکس‌ها</label>
+  </div>
+
+  <!-- 4) نام فایل PDF -->
+  <label for="pdfName">نام فایل PDF:</label>
+  <input type="text" id="pdfName" placeholder="مثلاً MyPhotos.pdf">
+
+  <button class="download-btn" id="generateBtn">📂 ساخت PDF و دانلود</button>
+</div>
+
+<!-- فقط pdf-lib کافیست -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+const fileInput = document.getElementById('fileInput');
+const pdfInput = document.getElementById('pdfInput');
+const fileList = document.getElementById('fileList');
+const generateBtn = document.getElementById('generateBtn');
+const pdfNameInput = document.getElementById('pdfName');
+
+const MAX_IMAGES = 30;
+const MAX_PDFS = 20;
+let images = [];
+
+// انتخاب عکس‌ها
+fileInput.addEventListener('change', (e) => {
+  const files = Array.from(e.target.files);
+  if (files.length + images.length > MAX_IMAGES) {
+    alert(`حداکثر ${MAX_IMAGES} عکس مجاز است.`);
+    return;
+  }
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (evt) => { images.push(evt.target.result); renderList(); };
+    reader.readAsDataURL(file);
+  });
+});
+
+// نمایش لیست عکس‌ها
+function renderList() {
+  fileList.innerHTML = '';
+  images.forEach((img, index) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      عکس ${index + 1}
+      <span>
+        <button onclick="moveUp(${index})">↑</button>
+        <button onclick="moveDown(${index})">↓</button>
+        <button onclick="removeImg(${index})">❌</button>
+      </span>
+    `;
+    fileList.appendChild(li);
+  });
+}
+window.moveUp = (i) => { if (i===0) return; [images[i-1], images[i]]=[images[i], images[i-1]]; renderList(); };
+window.moveDown = (i) => { if (i===images.length-1) return; [images[i+1], images[i]]=[images[i], images[i+1]]; renderList(); };
+window.removeImg = (i) => { images.splice(i,1); renderList(); };
+
+// ساخت و ادغام PDF
+generateBtn.addEventListener('click', async () => {
+  if (images.length === 0 && pdfInput.files.length === 0) {
+    alert('لطفاً حداقل یک عکس یا یک فایل PDF انتخاب کنید.');
+    return;
+  }
+  if (pdfInput.files.length > MAX_PDFS) {
+    alert(`حداکثر ${MAX_PDFS} فایل PDF مجاز است.`);
+    return;
+  }
+
+  const pdfName = (pdfNameInput.value.trim() || 'MyPhotos.pdf').replace(/[/\\:*?"<>|]/g,'_');
+  const order = document.querySelector('input[name="order"]:checked').value;
+
+  const mergedPdf = await PDFLib.PDFDocument.create();
+
+  async function addImages() {
+    for (let i = 0; i < images.length; i++) {
+      const imgBytes = await fetch(images[i]).then(r => r.arrayBuffer());
+      const isPng = images[i].startsWith('data:image/png');
+      const embedded = isPng ? await mergedPdf.embedPng(imgBytes) : await mergedPdf.embedJpg(imgBytes);
+
+      const page = mergedPdf.addPage();
+      const { width, height } = page.getSize();
+      const iw = embedded.width, ih = embedded.height;
+      const scale = Math.min(width / iw, height / ih);
+      const w = iw * scale, h = ih * scale;
+
+      page.drawImage(embedded, { x: (width - w)/2, y: (height - h)/2, width: w, height: h });
+    }
+  }
+
+  async function addPdfs() {
+    for (let i = 0; i < pdfInput.files.length; i++) {
+      const buf = await pdfInput.files[i].arrayBuffer();
+      const ext = await PDFLib.PDFDocument.load(buf);
+      const pages = await mergedPdf.copyPages(ext, ext.getPageIndices());
+      pages.forEach(p => mergedPdf.addPage(p));
+    }
+  }
+
+  if (order === 'images-first') {
+    await addImages();
+    await addPdfs();
+  } else {
+    await addPdfs();
+    await addImages();
+  }
+
+  const bytes = await mergedPdf.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = pdfName;
+  a.click();
+});
+</script>
+
+</body>
+</html>
